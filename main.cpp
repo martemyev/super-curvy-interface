@@ -24,16 +24,24 @@ std::string file_stem(const std::string &path);
 void make_super_curvy(float *values, int n_cols, int n_rows, int width,
                       int jump);
 
+void make_super_curvy2(float *values, int n_cols, int n_rows, int jump, float h,
+                       const float *curvy_line);
+
+void get_curvy_line(const float *values, int n_cols, int n_rows, float h,
+                    float *curvy_line);
+
+
 
 
 int main(int argc, char **argv)
 {
-  if (argc != 5) {
-    std::cout << "\nUsage:\n" << argv[0] << " file.bin ncols width jump\n"
+  if (argc != 6) {
+    std::cout << "\nUsage:\n" << argv[0] << " file.bin ncols width jump h\n"
               << "file.bin contains media properties with curvy interface\n"
               << "ncols is number of columns in binary file\n"
-              << "width is size of part of interface for jump (in cells)\n"
-              << "jump is heigth of jump of interface (in cells)\n\n";
+              << "width is size of part of interface for jump (in cells) - not used with second version\n"
+              << "jump is heigth of jump of interface (in cells)\n"
+              << "h is cell size (m)\n\n";
     return 1;
   }
 
@@ -42,12 +50,17 @@ int main(int argc, char **argv)
   const int n_cols = atoi(argv[2]);
   const int width  = atoi(argv[3]);
   const int jump   = atoi(argv[4]);
+  const float h    = atof(argv[5]);
 
   float *values = NULL;
   int n_rows;
   read_binary(filename, n_cols, &n_rows, &values);
 
-  make_super_curvy(values, n_cols, n_rows, width, jump);
+  float *curvy_line = new float[n_cols]; // y-coordinates of the line
+  get_curvy_line(values, n_cols, n_rows, h, curvy_line);
+
+//  make_super_curvy(values, n_cols, n_rows, width, jump);
+  make_super_curvy2(values, n_cols, n_rows, jump, h, curvy_line);
 
   write_binary(file_stem(filename) + "_curvy.bin", values, n_cols, n_rows);
 
@@ -147,6 +160,48 @@ void make_super_curvy(float *values, int n_cols, int n_rows, int width,
           values[(row+sign*j)*n_cols + col] = values[(row-sign)*n_cols + col];
         }
         column_done = true;
+      }
+    }
+  }
+}
+
+
+
+void make_super_curvy2(float *values, int n_cols, int n_rows,
+                      int jump, float h, const float *curvy_line)
+{
+  double f0 = 2.;
+  double f1 = 3.;
+  double f2 = 4.;
+  double val0 = values[0];
+  double val1 = values[n_cols*n_rows - 1];
+
+  for (int col = 0; col < n_cols; ++col) {
+    const double s0 = sin((col+1)/f0);
+    const double s1 = sin((col+1)/f1);
+    const double s2 = sin((col+1)/f2);
+    double new_val = curvy_line[col] + jump*(s0 + s1 + s2);
+    int new_index = static_cast<int>(new_val / h);
+    for (int row = 0; row < n_rows; ++row) {
+      if (row < new_index)
+        values[row*n_cols + col] = val0;
+      else
+        values[row*n_cols + col] = val1;
+    }
+  }
+}
+
+
+
+void get_curvy_line(const float *values, int n_cols, int n_rows, float h,
+                    float *curvy_line)
+{
+  const double tol = 1.;
+  for (int col = 0; col < n_cols; ++col) {
+    for (int row = 0; row < n_rows-1; ++row) {
+      if (fabs(values[row*n_cols + col] - values[(row+1)*n_cols + col]) > tol) {
+        curvy_line[col] = h*row;
+        break;
       }
     }
   }
