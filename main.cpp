@@ -176,11 +176,20 @@ void make_super_curvy2(float *values, int n_cols, int n_rows,
   double val0 = values[0];
   double val1 = values[n_cols*n_rows - 1];
 
+  const std::string fname_XY = "super_curvy_line_coordinates_xy.txt";
+  const std::string fname_XZ = "super_curvy_line_coordinates_xz.txt";
+  std::ofstream out_XY(fname_XY.c_str());
+  std::ofstream out_XZ(fname_XZ.c_str());
+  if (!out_XY) throw std::runtime_error("Can't open file " + fname_XY);
+  if (!out_XZ) throw std::runtime_error("Can't open file " + fname_XZ);
+
   for (int col = 0; col < n_cols; ++col) {
     const double s0 = sin((col+1)/f0);
     const double s1 = sin((col+1)/f1);
     const double s2 = sin((col+1)/f2);
     double new_val = curvy_line[col] + jump*(s0 + s1 + s2);
+    out_XY << h*col << " " << new_val << "\n";
+    out_XZ << h*col << " " << h*n_rows-new_val << "\n";
     int new_index = static_cast<int>(new_val / h);
     for (int row = 0; row < n_rows; ++row) {
       if (row < new_index)
@@ -196,11 +205,20 @@ void make_super_curvy2(float *values, int n_cols, int n_rows,
 void get_curvy_line(const float *values, int n_cols, int n_rows, float h,
                     float *curvy_line)
 {
+  const std::string fname_XY = "curvy_line_coordinates_xy.txt";
+  const std::string fname_XZ = "curvy_line_coordinates_xz.txt";
+  std::ofstream out_XY(fname_XY.c_str());
+  std::ofstream out_XZ(fname_XZ.c_str());
+  if (!out_XY) throw std::runtime_error("Can't open file " + fname_XY);
+  if (!out_XZ) throw std::runtime_error("Can't open file " + fname_XZ);
+
   const double tol = 1.;
   for (int col = 0; col < n_cols; ++col) {
     for (int row = 0; row < n_rows-1; ++row) {
       if (fabs(values[row*n_cols + col] - values[(row+1)*n_cols + col]) > tol) {
         curvy_line[col] = h*row;
+        out_XY << h*col << " " << h*row << "\n";
+        out_XZ << h*col << " " << h*(n_rows-row) << "\n";
         break;
       }
     }
